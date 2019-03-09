@@ -1,14 +1,15 @@
 #include <iostream>
 #include <vector>
 #include <thread>
+#include <mutex>
 #include <unistd.h>
 #include <SFML/Graphics.hpp>
 
 using namespace std;
+mutex mtx;
 
-void drawSquares(sf::RenderWindow *window, int drawFrom, int drawTo)
+void drawSquares(sf::RenderWindow *window, int drawFrom, int drawTo, int threadno)
 {
-    cout<<"Running thread 1 (t1)"<<endl;
     int windowHeight,windowWidth;
     windowHeight = window->getSize().y;
     windowWidth = window->getSize().x;
@@ -29,6 +30,9 @@ void drawSquares(sf::RenderWindow *window, int drawFrom, int drawTo)
     chessSquare.push_back(square);
 
     int index1=1,index2=0,xpos=0,ypos = drawFrom*heightofsquare;
+
+    mtx.lock(); //Lock mutex
+    cout<<"Running thread: "<<threadno<<" (t"<<threadno<<")"<<endl;
     for(int j=drawFrom; j<drawTo; j++)
     {
         for(int i=0; i<8 ;i++)
@@ -61,6 +65,7 @@ void drawSquares(sf::RenderWindow *window, int drawFrom, int drawTo)
         xpos = 0;
         ypos = ypos + heightofsquare;
     }
+    mtx.unlock();   //Unlock mutex
 
     return;
 }
@@ -81,10 +86,14 @@ int main()
             }
         }
         window.clear(sf::Color::Magenta);
-        thread t1(drawSquares, &window, 0, 4);
+        
+        //*A window must be deactivated in the thread where it is active, before being used in another thread.
+        window.setActive(false);
+        thread t1(drawSquares, &window, 0, 4, 1);
+        thread t2(drawSquares, &window, 4, 8, 2);
         t1.join();
-        thread t2(drawSquares, &window, 4, 8);
         t2.join();
+        window.setActive(true);
         window.display();
     }
 
